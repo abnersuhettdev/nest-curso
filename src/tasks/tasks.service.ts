@@ -1,12 +1,77 @@
-import { Injectable } from '@nestjs/common';
+import { Delete, HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import { Task } from './entities/task.entity';
+import { CreateTaskDto } from './dto/create-task.dto';
+import { UpdateTaskDto } from './dto/update-task.dto';
+import { PrismaService } from '../prisma/prisma.service';
+import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class TasksService {
-  listAllTasks() {
-    return [{ id: '1', task: 'Comprar pão' }];
+  constructor(private prisma: PrismaService) {}
+
+  private tasks: Task[] = [
+    {
+      id: 1,
+      name: 'Seguir o Sujeito Programador',
+      description: 'Aprendendo muito sobre programação',
+      completed: false,
+    },
+  ];
+
+  async findAll() {
+    const allTasks = await this.prisma.task.findMany();
+    return allTasks;
   }
 
-  findOneTask() {
-    return [{ id: '1', task: 'Tarefa abner 1' }];
+  async findOne(id: number) {
+    const task = await this.prisma.task.findFirst({
+      where: {
+        id: id,
+      },
+    });
+
+    if (task?.name) {
+      return task;
+    }
+
+    throw new HttpException('Tarefa não foi encontrada!', HttpStatus.NOT_FOUND);
+  }
+
+  async create(createTaskDto: CreateTaskDto) {
+    const newTask = await this.prisma.task.create({
+      data: {
+        name: createTaskDto.name,
+        description: createTaskDto.description,
+        completed: false,
+      },
+    });
+
+    return newTask;
+  }
+
+  async update(id: number, updateTaskDto: UpdateTaskDto) {
+    const findTask = await this.prisma.task.findFirst({ where: { id: id } });
+
+    if (!findTask) {
+      throw new HttpException('Essa tarefa não existe', HttpStatus.NOT_FOUND);
+    }
+
+    const task = await this.prisma.task.update({
+      where: { id: findTask.id },
+      data: updateTaskDto,
+    });
+
+    return task;
+  }
+
+  delete(id: number) {
+    const taskIndex = this.tasks.findIndex((task) => task.id === Number(id));
+
+    if (taskIndex < 0) {
+      throw new HttpException('Essa tarefa não existe', HttpStatus.NOT_FOUND);
+    }
+
+    this.tasks.splice(taskIndex, 1);
+    return { message: 'Tarefa deletada com sucesso' };
   }
 }
