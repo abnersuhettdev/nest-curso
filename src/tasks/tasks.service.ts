@@ -1,10 +1,8 @@
 /*eslint-disable*/
-import { Delete, HttpException, HttpStatus, Injectable } from '@nestjs/common';
-import { Task } from './entities/task.entity';
+import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
 import { PrismaService } from '../prisma/prisma.service';
-import { Prisma } from '@prisma/client';
 import { PaginationDto } from 'src/common/dto/pagination.dto';
 
 @Injectable()
@@ -38,15 +36,24 @@ export class TasksService {
   }
 
   async create(createTaskDto: CreateTaskDto) {
-    const newTask = await this.prisma.task.create({
-      data: {
-        name: createTaskDto.name,
-        description: createTaskDto.description,
-        completed: false,
-      },
-    });
+    try {
+      const newTask = await this.prisma.task.create({
+        data: {
+          name: createTaskDto.name,
+          description: createTaskDto.description,
+          completed: false,
+          userId: createTaskDto.userId,
+        },
+      });
 
-    return newTask;
+      return newTask;
+    } catch (error) {
+      console.log(error);
+      throw new HttpException(
+        'Erro ao cadastrar Tarefa',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
   }
 
   async update(id: number, updateTaskDto: UpdateTaskDto) {
@@ -59,7 +66,15 @@ export class TasksService {
 
       const task = await this.prisma.task.update({
         where: { id: findTask.id },
-        data: updateTaskDto,
+        data: {
+          name: updateTaskDto.name ? updateTaskDto.name : findTask.name,
+          description: updateTaskDto.description
+            ? updateTaskDto.description
+            : findTask.description,
+          completed: updateTaskDto.completed
+            ? updateTaskDto.completed
+            : findTask.completed,
+        },
       });
 
       return task;
